@@ -1,6 +1,6 @@
 @CofidisCreditAPI_HostAddress = http://localhost:5118
 
-GET {{CofidisCreditAPI_HostAddress}}/weatherforecast/
+GET {{CofidisCreditAPI_HostAddress}}/creditcheck/
 Accept: application/json
 
 ###

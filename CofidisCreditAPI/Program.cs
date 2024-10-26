@@ -12,7 +12,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Credit Check Cofidis");
+        c.RoutePrefix = string.Empty;
+    });
+
 }
 
 app.UseAuthorization();
