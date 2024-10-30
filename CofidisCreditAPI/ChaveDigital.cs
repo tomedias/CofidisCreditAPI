@@ -16,7 +16,7 @@ namespace CofidisCreditAPI
         public Person GetPerson(string NIF)
         {
 
-            string query = "SELECT * FROM Persons WHERE NIF = @NIF";
+            string query = "SELECT * FROM govpt WHERE NIF = @NIF";
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
                 SqlCommand command = new SqlCommand(query, connection);
@@ -29,8 +29,8 @@ namespace CofidisCreditAPI
 
                     if (reader.Read())
                     {
-                        Console.WriteLine($"Person found {reader["NIF"]} and {reader["name"]}");
-                        return new Person((string)reader["NIF"], (string)reader["name"]);
+                        Console.WriteLine($"Person found {reader["NIF"]} and {reader["name"]} and {reader["Monthly_Income"]}");
+                        return new Person((string)reader["NIF"], (string)reader["name"], (int)reader["Monthly_Income"]);
                     }
 
 
@@ -42,7 +42,7 @@ namespace CofidisCreditAPI
                     Console.WriteLine($"An error occurred: {ex.Message}");
                 }
             }
-            return new Person("Test", "Test");
+            return new Person("Test", "Test",0);
 
         }
 

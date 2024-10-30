@@ -7,22 +7,15 @@ namespace CofidisCreditAPI
     public class Person
     {
         public string NIF { get; set; }
-        public string NAME { get; set; }
+        public string Name { get; set; }
+
+        public int Montly_Income { get; set; }
         
-        public Person(string nif, string name) {
-            this.NAME = name ?? throw new ArgumentNullException(nameof(name)); ;
+        public Person(string nif, string name, int monthly_income) {
+            this.Name = name ?? throw new ArgumentNullException(nameof(name)); ;
             this.NIF = nif ?? throw new ArgumentNullException(nameof(nif)); ;
+            this.Montly_Income = monthly_income;
         }
 
-        
-        public string getName()
-        {
-            return NAME;
-        }
-
-        public string getNif()
-        {
-            return NIF;
-        }
     }
 }
