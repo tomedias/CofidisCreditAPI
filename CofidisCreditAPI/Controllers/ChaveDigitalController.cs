@@ -21,5 +21,25 @@ namespace CofidisCreditAPI.Controllers
         {
             return Ok(chaveDigital.GetPerson(NIF));
         }
+
+        [HttpPost(Name = "Register")]
+        public ActionResult<Person> Register(string NIF, string name, double monthlyIncome)
+        {
+            return Ok(chaveDigital.CreatePerson(new Person(NIF,name,monthlyIncome)));
+        }
+
+        [HttpPut(Name = "UpdateIncome")]
+
+        public ActionResult<Person> Update(string NIF, double monthlyIncome)
+        {
+            return Ok(chaveDigital.EditMontlyIncome(NIF, monthlyIncome));
+        }
+
+        [HttpGet(Name = "ListPeople")]
+        public ActionResult<LinkedList<Person>> ListPeople()
+        {
+            return Ok(chaveDigital.ListPeople());
+        }
+        
     }
 }

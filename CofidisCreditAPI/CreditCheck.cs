@@ -13,9 +13,14 @@ namespace CofidisCreditAPI
             _connectionString = connectionString;
         }
 
-        public decimal GetCreditLimit(decimal monthlyIncome)
+        public double GetCreditLimit(double monthlyIncome)
         {
-            decimal creditLimit = 0;
+
+            if(monthlyIncome <0)
+            {
+                return 0;
+            }
+            double creditLimit = 0;
 
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
@@ -27,7 +32,7 @@ namespace CofidisCreditAPI
 
                     command.Parameters.Add(new SqlParameter("@MonthlyIncome", SqlDbType.Decimal)
                     {
-                        Value = monthlyIncome
+                        Value = Convert.ToDecimal(monthlyIncome)
                     });
 
 
@@ -44,7 +49,7 @@ namespace CofidisCreditAPI
                     command.ExecuteNonQuery();
 
 
-                    creditLimit = (decimal)creditLimitParam.Value;
+                    creditLimit = Convert.ToDouble(creditLimitParam.Value);
                 }
             }
 
@@ -69,7 +74,8 @@ namespace CofidisCreditAPI
 
                     while (reader.Read())
                     {
-                        creditList.AddLast(new Credit((string)reader["credit_id"], person, Convert.ToDouble(reader["Credit_Taken"]), Convert.ToDouble(reader["Credit_Payed"]), (DateTime)reader["Term"]));
+                        creditList.AddLast(new Credit((string)reader["credit_id"], person, Convert.ToDouble(reader["Credit_Taken"]), Convert.ToDouble(reader["Credit_Payed"]), 
+                            (DateTime)reader["credit_request_date"],(DateTime)reader["credit_term"]));
                     }
 
 
@@ -85,20 +91,22 @@ namespace CofidisCreditAPI
         }
 
 
-        public Credit CreateCredit(Person person, double credit)
+        public Credit CreateCredit(Person person, double credit, int credit_duration)
         {
-            string query = "INSERT INTO credits (credit_id, nif, credit_taken, credit_payed, term) VALUES (@ID,@NIF, @credit_taken, @credit_payed, @term)";
+            string query = "INSERT INTO credits (credit_id, nif, credit_taken, credit_payed, credit_request_date, credit_term) VALUES (@ID,@NIF, @credit_taken, @credit_payed, @credit_request_date,@credit_term)";
             using (SqlConnection connection = new SqlConnection(_connectionString))
             {
                 SqlCommand command = new SqlCommand(query, connection);
 
-                string ID = Guid.NewGuid().ToString();
+                string ID = Guid.NewGuid().ToString().Substring(0, 8);
                 command.Parameters.AddWithValue("@ID", ID);
                 command.Parameters.AddWithValue("@NIF", person.NIF);
                 command.Parameters.AddWithValue("@credit_taken", credit);
                 command.Parameters.AddWithValue("@credit_payed", 0.0M);
-                DateTime term = DateTime.Now;
-                command.Parameters.AddWithValue("@term", DateTime.Now);
+                DateTime start = DateTime.Now;
+                DateTime end = start.AddYears(credit_duration);
+                command.Parameters.AddWithValue("@credit_request_date", start);
+                command.Parameters.AddWithValue("@credit_term", end);
 
                 try
                 {
@@ -107,7 +115,7 @@ namespace CofidisCreditAPI
 
                     if (result > 0)
                     {
-                        return new Credit(ID, person, credit, 0.0, term);
+                        return new Credit(ID, person, credit, 0.0, start,end);
                     }
 
                 }

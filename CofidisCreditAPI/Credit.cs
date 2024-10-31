@@ -16,19 +16,22 @@ namespace CofidisCreditAPI
         [JsonNumberHandling(JsonNumberHandling.AllowNamedFloatingPointLiterals)]
         public double CreditPayed { get; set; }
 
-        public DateTime Term { get; set; }
+
+        public DateTime CreditStart { get; set; }
+        public DateTime CreditEnd { get; set; }
         
-        public Credit(string ID ,Person person, double CreditValue, double CreditPayed, DateTime Term) {
+        public Credit(string ID ,Person person, double CreditValue, double CreditPayed, DateTime CreditStart, DateTime CreditEnd) {
             this.ID = ID;
             this.Person = person;
             this.CreditValue = CreditValue;
             this.CreditPayed = CreditPayed;
-            this.Term = Term;
+            this.CreditStart = CreditStart;
+            this.CreditEnd = CreditEnd;
         }
 
         public bool CheckCreditState()
         {
-            return ((DateTime.Now) < this.Term) || CreditPayed == this.CreditValue;
+            return ((DateTime.Now) < this.CreditEnd) || CreditPayed == this.CreditValue;
         }
 
         public double MissingCredit()

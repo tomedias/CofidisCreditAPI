@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace CofidisCreditAPI
+namespace CofidisCreditAPI.Controllers
  
 {
 
@@ -25,16 +25,16 @@ namespace CofidisCreditAPI
         }
 
         [HttpGet("CreditLimit")]
-        public ActionResult<decimal> GetCreditLimit(string NIF)
+        public ActionResult<double> GetCreditLimit(string NIF)
         {
             Person person = LoginChaveDigital(NIF);
 
-            if (person.Montly_Income <= 0)
+            if (person.Monthly_Income <= 0)
             {
                 return BadRequest("Monthly income must be greater than zero.");
             }
 
-            decimal creditLimit = creditCheck.GetCreditLimit(person.Montly_Income);
+            double creditLimit = creditCheck.GetCreditLimit(person.Monthly_Income);
             return Ok(creditLimit);
         }
 
@@ -92,21 +92,27 @@ namespace CofidisCreditAPI
         }
 
         [HttpGet("RequestCredit")]
-        public String RequestCredit(String NIF, double creditvalue)
+        public String RequestCredit(String NIF, double creditValue, int creditDuration)
         {
             Person person = LoginChaveDigital(NIF);
-            if (person.Montly_Income <= 0)
+            if (person.Monthly_Income <= 0)
             {
                 return "Monthly income must be greater than zero.";
             }
+
+            if (creditValue < 0)
+            {
+                return "Credit must be greater than zero";
+            }
+
             LinkedList<Credit> creditList = creditCheck.GetCreditList(person);
             double totalMissingCredit = creditList.Sum(credit => credit.MissingCredit());
-            double creditLimit = (double)creditCheck.GetCreditLimit(person.Montly_Income);
-            if ((totalMissingCredit + creditvalue) > creditLimit)
+            double creditLimit = creditCheck.GetCreditLimit(person.Monthly_Income);
+            if ((totalMissingCredit + creditValue) > creditLimit)
             {
                 return $"You cannot request this credit with your current credit limit ({creditLimit}) you currently have {totalMissingCredit} of unpayed credit";
             }
-            Credit credit = creditCheck.CreateCredit(person, creditvalue);
+            Credit credit = creditCheck.CreateCredit(person, creditValue, creditDuration);
             return credit != null ? $"Your credit has been requested successfully with ID: {credit.ID}" : "Something went wrong while creating your credit";
         }
 
