@@ -5,7 +5,7 @@ VisualStudioVersion = 17.11.35327.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CofidisCreditAPI", "CofidisCreditAPI\CofidisCreditAPI.csproj", "{E8DAD12D-1C0B-4B7C-9B43-88BCF061ECF1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CofidisTest", "CofidisTest\CofidisTest.csproj", "{91AE045F-7569-4652-B18B-FE5CDE96AC46}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CofidisTest", "CofidisTest\CofidisTest.csproj", "{91AE045F-7569-4652-B18B-FE5CDE96AC46}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
