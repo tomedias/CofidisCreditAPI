@@ -12,27 +12,29 @@ namespace CofidisCreditAPI
         public string Name { get; set; }
 
         [JsonNumberHandling(JsonNumberHandling.AllowNamedFloatingPointLiterals)]
-        public double Monthly_Income { get; set; }
+        public double MonthlyIncome { get; set; }
 
-        public Person(string NIF, string name, double monthlyIncome)
+        public Person(string nif, string name, double monthlyIncome)
         {
             this.Name = name ?? throw new ArgumentNullException(nameof(name)); ;
-            this.NIF = NIF ?? throw new ArgumentNullException(nameof(NIF)); ;
-            this.Monthly_Income = monthlyIncome;
+            this.NIF = nif ?? throw new ArgumentNullException(nameof(nif)); ;
+            this.MonthlyIncome = monthlyIncome;
         }
 
 
         public override bool Equals(object obj)
         {
-            
             if (obj == null || GetType() != obj.GetType())
             {
                 return false;
             }
 
-           
             Person other = (Person)obj;
-            return Name == other.Name && Name == other.Name && Monthly_Income == other.Monthly_Income;
+            return NIF == other.NIF && Name == other.Name && MonthlyIncome == other.MonthlyIncome;
+        }
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(NIF, Name, MonthlyIncome);
         }
 
     }

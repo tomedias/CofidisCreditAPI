@@ -91,7 +91,7 @@ namespace CofidisCreditAPI
                 string ID = Guid.NewGuid().ToString();
                 command.Parameters.AddWithValue("@NIF", person.NIF);
                 command.Parameters.AddWithValue("@name", person.Name);
-                command.Parameters.AddWithValue("@monthly_income", person.Monthly_Income);
+                command.Parameters.AddWithValue("@monthly_income", person.MonthlyIncome);
 
 
                 try

@@ -13,13 +13,8 @@ namespace CofidisCreditAPI
             _connectionString = connectionString;
         }
 
-        public double GetCreditLimit(double monthlyIncome)
+        public double GetCreditLimit(string NIF)
         {
-
-            if(monthlyIncome <0)
-            {
-                return 0;
-            }
             double creditLimit = 0;
 
             using (SqlConnection connection = new SqlConnection(_connectionString))
@@ -28,27 +23,38 @@ namespace CofidisCreditAPI
                 using (SqlCommand command = new SqlCommand("GetCreditLimit", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
-
-
-                    command.Parameters.Add(new SqlParameter("@MonthlyIncome", SqlDbType.Decimal)
+                    command.Parameters.Add(new SqlParameter("@NIF", SqlDbType.VarChar)
                     {
-                        Value = Convert.ToDecimal(monthlyIncome)
+                        Value = NIF
                     });
 
-
-                    SqlParameter creditLimitParam = new SqlParameter("@CreditLimit", SqlDbType.Decimal)
+                    SqlParameter creditLimitParam = new SqlParameter("@CreditLimit", SqlDbType.Float)
                     {
                         Direction = ParameterDirection.Output
                     };
+
+                    SqlParameter returnValueParam = new SqlParameter("@ReturnValue", SqlDbType.Int)
+                    {
+                        Direction = ParameterDirection.ReturnValue
+                    };
+                    command.Parameters.Add(returnValueParam);
                     command.Parameters.Add(creditLimitParam);
-
-
                     connection.Open();
-
-
                     command.ExecuteNonQuery();
 
-
+                    int returnValue = (int)returnValueParam.Value;
+                    
+                    if (returnValue == -1)
+                    {
+                        // Handle the case where the monthly income is null
+                        Console.WriteLine($"No income found for NIF: {NIF}");
+                        return -1;
+                    }
+                    else if (returnValue != 0)
+                    {
+                        // Handle unexpected return values
+                        throw new Exception("An unexpected error occurred.");
+                    }
                     creditLimit = Convert.ToDouble(creditLimitParam.Value);
                 }
             }
@@ -91,7 +97,7 @@ namespace CofidisCreditAPI
         }
 
 
-        public Credit CreateCredit(Person person, double credit, int credit_duration)
+        public Credit? CreateCredit(Person person, double credit, int credit_duration)
         {
             string query = "INSERT INTO credits (credit_id, nif, credit_taken, credit_payed, credit_request_date, credit_term) VALUES (@ID,@NIF, @credit_taken, @credit_payed, @credit_request_date,@credit_term)";
             using (SqlConnection connection = new SqlConnection(_connectionString))
@@ -102,7 +108,7 @@ namespace CofidisCreditAPI
                 command.Parameters.AddWithValue("@ID", ID);
                 command.Parameters.AddWithValue("@NIF", person.NIF);
                 command.Parameters.AddWithValue("@credit_taken", credit);
-                command.Parameters.AddWithValue("@credit_payed", 0.0M);
+                command.Parameters.AddWithValue("@credit_payed", 0.0);
                 DateTime start = DateTime.Now;
                 DateTime end = start.AddYears(credit_duration);
                 command.Parameters.AddWithValue("@credit_request_date", start);
@@ -127,7 +133,7 @@ namespace CofidisCreditAPI
             return null;
         }
 
-        public bool PayCredit(Person person, double payment, string credit_id)
+        public double PayCredit(Person person, double payment, string credit_id)
         {
             try
             {
@@ -147,13 +153,11 @@ namespace CofidisCreditAPI
                         {
                             Value = credit_id
                         });
-                        command.Parameters.Add(new SqlParameter("@paymentAmount", SqlDbType.Decimal)
+                        command.Parameters.Add(new SqlParameter("@paymentAmount", SqlDbType.Float)
                         {
-                            Value = Convert.ToDecimal(payment)
+                            Value = payment
                         });
-                        SqlParameter newCreditPayedParam = new SqlParameter("@newCreditPayed", SqlDbType.Decimal);
-                        newCreditPayedParam.Precision = 18;
-                        newCreditPayedParam.Scale = 2;
+                        SqlParameter newCreditPayedParam = new SqlParameter("@newCreditPayed", SqlDbType.Float);
                         newCreditPayedParam.Direction = ParameterDirection.Output;
                         command.Parameters.Add(newCreditPayedParam);
 
@@ -162,23 +166,21 @@ namespace CofidisCreditAPI
 
 
                         connection.Open();
-
-
-                       
+                
                         int affectedRows = command.ExecuteNonQuery();
 
                         
-                        decimal newCreditPayed = (decimal)newCreditPayedParam.Value;
+                        double newCreditPayed = Convert.ToDouble(newCreditPayedParam.Value);
 
                         if (affectedRows > 0)
                         {
                             Console.WriteLine($"Payment processed successfully. New credit paid amount: {newCreditPayed}");
-                            return true;
+                            return newCreditPayed;
                         }
                         else
                         {
                             Console.WriteLine("No rows were updated. Please check the NIF and Credit ID.");
-                            return false;
+                            return newCreditPayed;
                         }
                     }
                 }
@@ -193,7 +195,7 @@ namespace CofidisCreditAPI
                 
                 Console.WriteLine($"Error: {ex.Message}");
             }
-            return false;
+            return -1;
 
 
 

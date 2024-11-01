@@ -3,6 +3,7 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CofidisCreditAPI.Controllers
  
@@ -13,56 +14,53 @@ namespace CofidisCreditAPI.Controllers
     [Route("api/[controller]")]
     public class CreditCheckController : ControllerBase
     {
-       
+
         private readonly ILogger<CreditCheckController> _logger;
         private readonly double UnemploymentRate = 0.066f;
         private readonly double Inflation = 0.0216;
-        CreditCheck creditCheck = new CreditCheck("Server=localhost;Database=MicroCreditDB;Trusted_Connection=True;");
+        private readonly CreditCheck _creditCheck;
+        private readonly ChaveDigital _chaveDigital;
 
         public CreditCheckController(ILogger<CreditCheckController> logger)
         {
             _logger = logger;
+            _creditCheck = new CreditCheck("Server=localhost;Database=MicroCreditDB;Trusted_Connection=True;");
+            _chaveDigital = new ChaveDigital("Server=localhost;Database=MicroCreditDB;Trusted_Connection=True;");
         }
 
-        [HttpGet("CreditLimit")]
-        public ActionResult<double> GetCreditLimit(string NIF)
+        [HttpGet("credit-limit")]
+        public ActionResult<double> GetCreditLimit([FromQuery] string NIF)
         {
-            Person person = LoginChaveDigital(NIF);
-
-            if (person.Monthly_Income <= 0)
+            if (string.IsNullOrEmpty(NIF))
             {
-                return BadRequest("Monthly income must be greater than zero.");
+                return BadRequest("NIF cannot be null or empty.");
             }
 
-            double creditLimit = creditCheck.GetCreditLimit(person.Monthly_Income);
-            return Ok(creditLimit);
+            // Assuming you have a method to fetch person data
+            
+            double creditLimit = _creditCheck.GetCreditLimit(NIF);
+
+            Console.WriteLine($"Found credit of {creditLimit}");
+            return creditLimit!=-1 ?  Ok(creditLimit) : NotFound("Person not found.");
         }
+
 
 
         //Simulate ChaveDigital login method as an external service
-        private Person LoginChaveDigital(String NIF)
+        private Person LoginChaveDigital(string NIF)
         {
-            string baseUrl = "http://localhost:5000/ChaveDigital";
+            string baseUrl = "http://localhost:5000/api/ChaveDigital/login";
             using (HttpClient client = new HttpClient())
             {
-                
                 string requestUrl = $"{baseUrl}?NIF={NIF}";
 
                 try
                 {
-                    
                     HttpResponseMessage response = client.GetAsync(requestUrl).GetAwaiter().GetResult();
-
-                    
                     if (response.IsSuccessStatusCode)
                     {
                         string responseBody = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                        Person person = JsonConvert.DeserializeObject<Person>(responseBody) ?? throw new HttpRequestException();
-                        return person;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Request failed with status code: " + response.StatusCode);
+                        return JsonConvert.DeserializeObject<Person>(responseBody) ?? throw new HttpRequestException();
                     }
                 }
                 catch (HttpRequestException e)
@@ -70,14 +68,14 @@ namespace CofidisCreditAPI.Controllers
                     Console.WriteLine("Request error: " + e.Message);
                 }
             }
-            return new Person("Test","Test",0);
+            return null;
         }
 
-        [HttpGet("CreditRisk")]
+        [HttpGet("credit-risk")]
         public double AccessCreditRisk(String NIF)
         {
             Person person = LoginChaveDigital(NIF);
-            LinkedList<Credit> creditList = creditCheck.GetCreditList(person);
+            LinkedList<Credit> creditList = _creditCheck.GetCreditList(person);
             int invalidCount = creditList.Count(credit => !credit.CheckCreditState());
             double percentageFailedCredit = (double)invalidCount / creditList.Count;
             double result = percentageFailedCredit + UnemploymentRate + Inflation;
@@ -85,45 +83,69 @@ namespace CofidisCreditAPI.Controllers
         }
 
         [HttpGet("CreditList")]
-        public ActionResult<LinkedList<Credit>> GetCredits(String NIF)
+        public ActionResult<LinkedList<Credit>> GetCredits(string NIF)
         {
-            Person person = LoginChaveDigital(NIF);
-            return creditCheck.GetCreditList(person);
+            var person = LoginChaveDigital(NIF);
+            if (person == null)
+            {
+                return NotFound("Person not found.");
+            }
+
+            var creditList = _creditCheck.GetCreditList(person);
+            if (creditList.IsNullOrEmpty())
+            {
+                return NotFound("No credit records found.");
+            }
+
+            return Ok(creditList);
         }
 
-        [HttpGet("RequestCredit")]
-        public String RequestCredit(String NIF, double creditValue, int creditDuration)
+        [HttpPost("request-credit")]
+        public ActionResult<string> RequestCredit(String NIF, double creditValue, int creditDuration)
         {
-            Person person = LoginChaveDigital(NIF);
-            if (person.Monthly_Income <= 0)
+            var person = LoginChaveDigital(NIF);
+            if (person == null)
             {
-                return "Monthly income must be greater than zero.";
+                return NotFound("Person not found.");
             }
 
-            if (creditValue < 0)
+            if (person.MonthlyIncome <= 0)
             {
-                return "Credit must be greater than zero";
+                return BadRequest("Monthly income must be greater than zero.");
             }
 
-            LinkedList<Credit> creditList = creditCheck.GetCreditList(person);
+            if (creditValue <= 0)
+            {
+                return BadRequest("Credit amount must be greater than zero.");
+            }
+
+            var creditList = _creditCheck.GetCreditList(person);
             double totalMissingCredit = creditList.Sum(credit => credit.MissingCredit());
-            double creditLimit = creditCheck.GetCreditLimit(person.Monthly_Income);
+            double creditLimit = _creditCheck.GetCreditLimit(person.NIF); //EXPECTED NOT TO FAIL OFC
             if ((totalMissingCredit + creditValue) > creditLimit)
             {
-                return $"You cannot request this credit with your current credit limit ({creditLimit}) you currently have {totalMissingCredit} of unpayed credit";
+                return BadRequest($"Credit request exceeds limit. Current limit: {creditLimit}, unpaid credit: {totalMissingCredit}");
             }
-            Credit credit = creditCheck.CreateCredit(person, creditValue, creditDuration);
-            return credit != null ? $"Your credit has been requested successfully with ID: {credit.ID}" : "Something went wrong while creating your credit";
+            Credit credit = _creditCheck.CreateCredit(person, creditValue, creditDuration);
+            return credit != null
+                ? Ok($"Your credit has been requested successfully with ID: {credit.Id}")
+                : StatusCode(500, "An error occurred while creating your credit request.");
         }
 
 
-        [HttpPut("PayCredit")]
-        public bool PayCredit(String NIF, String credit_id, double payment)
+        [HttpPut("pay-credit")]
+        public ActionResult<bool> PayCredit(String NIF, String credit_id, double payment)
         {
-            Person person = LoginChaveDigital(NIF);
-            return creditCheck.PayCredit(person, payment, credit_id);
+            var person = LoginChaveDigital(NIF);
+            if (person == null)
+            {
+                return NotFound("Person not found.");
+            }
+
+            double paymentLeft = _creditCheck.PayCredit(person, payment, credit_id);
+            return paymentLeft!=-1 ? Ok($"Payment successfull, {paymentLeft} of payment left.") : StatusCode(500, "Failed to process credit payment.");
         }
     }
-
+        
     
 }
