@@ -1,10 +1,12 @@
 using System.Data;
 using System;
 using System.Data.SqlClient;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CofidisCreditAPI
 {
-    public class CreditCheck
+    public class CreditCheck : ControllerBase
     {
 
         private readonly string _connectionString;
@@ -13,7 +15,7 @@ namespace CofidisCreditAPI
             _connectionString = connectionString;
         }
 
-        public double GetCreditLimit(string NIF)
+        public ActionResult<double> GetCreditLimit(string NIF)
         {
             double creditLimit = 0;
 
@@ -46,24 +48,25 @@ namespace CofidisCreditAPI
                     
                     if (returnValue == -1)
                     {
-                        // Handle the case where the monthly income is null
+               
                         Console.WriteLine($"No income found for NIF: {NIF}");
-                        return -1;
+                        return NotFound("Person not found.");
                     }
                     else if (returnValue != 0)
                     {
-                        // Handle unexpected return values
-                        throw new Exception("An unexpected error occurred.");
+
+                        return StatusCode(500, "An error occurred while getting your credit limit.");
                     }
                     creditLimit = Convert.ToDouble(creditLimitParam.Value);
+                    
                 }
             }
 
-            return creditLimit;
+            return Ok(creditLimit);
         }
 
 
-        public LinkedList<Credit> GetCreditList(Person person)
+        public ActionResult<LinkedList<Credit>> GetCreditList(Person person)
         {
 
             LinkedList<Credit> creditList = new LinkedList<Credit>();
@@ -90,14 +93,14 @@ namespace CofidisCreditAPI
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"An error occurred: {ex.Message}");
+                    StatusCode(500, "An error occurred while getting your credit list.");
                 }
             }
-            return creditList;
+            return creditList.IsNullOrEmpty() ? NoContent() : Ok(creditList);
         }
 
 
-        public Credit? CreateCredit(Person person, double credit, int credit_duration)
+        public ActionResult<string> CreateCredit(Person person, double credit, int credit_duration)
         {
             string query = "INSERT INTO credits (credit_id, nif, credit_taken, credit_payed, credit_request_date, credit_term) VALUES (@ID,@NIF, @credit_taken, @credit_payed, @credit_request_date,@credit_term)";
             using (SqlConnection connection = new SqlConnection(_connectionString))
@@ -121,19 +124,19 @@ namespace CofidisCreditAPI
 
                     if (result > 0)
                     {
-                        return new Credit(ID, person, credit, 0.0, start,end);
+                        return Ok($"Your credit has been requested successfully with ID: {ID}");
                     }
 
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"An error occurred: {ex.Message}");
+                    StatusCode(500, "An error occurred while creating your credit request.");
                 }
             }
-            return null;
+            return NotFound("Person not found.");
         }
 
-        public double PayCredit(Person person, double payment, string credit_id)
+        public ActionResult<string> PayCredit(Person person, double payment, string credit_id)
         {
             try
             {
@@ -175,12 +178,12 @@ namespace CofidisCreditAPI
                         if (affectedRows > 0)
                         {
                             Console.WriteLine($"Payment processed successfully. New credit paid amount: {newCreditPayed}");
-                            return newCreditPayed;
+                            return Ok($"Payment successfull, {newCreditPayed} of payment left.");
                         }
                         else
                         {
                             Console.WriteLine("No rows were updated. Please check the NIF and Credit ID.");
-                            return newCreditPayed;
+                            return StatusCode(500, "Failed to process credit payment.");
                         }
                     }
                 }
@@ -195,7 +198,7 @@ namespace CofidisCreditAPI
                 
                 Console.WriteLine($"Error: {ex.Message}");
             }
-            return -1;
+            return NotFound("Person not found");
 
 
 

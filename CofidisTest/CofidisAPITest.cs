@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using System.Text;
 using CofidisCreditAPI;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CofidisTest
 {
@@ -30,17 +32,17 @@ namespace CofidisTest
             string fullName = $"{firstName} {lastName}";
             string NIF = Convert.ToString(Random.Next(100000000, 999999999));
             double salary = -1;
-            Person person = chaveDigital.CreatePerson(new Person(NIF, fullName, salary));
-            double value = creditCheck.GetCreditLimit(NIF);
+            Person person = chaveDigital.CreatePerson(new Person(NIF, fullName, salary)).Value;
+            double value = (double)((OkObjectResult)creditCheck.GetCreditLimit(NIF).Result).Value;
             Assert.AreEqual(0.0, value, 0);
             chaveDigital.EditMontlyIncome(NIF, 800);
-            value = creditCheck.GetCreditLimit(NIF);
+            value = (double)((OkObjectResult)creditCheck.GetCreditLimit(NIF).Result).Value;
             Assert.AreEqual(1000, value, 0);
             chaveDigital.EditMontlyIncome(NIF, 1700);
-            value = creditCheck.GetCreditLimit(NIF);
+            value = (double)((OkObjectResult)creditCheck.GetCreditLimit(NIF).Result).Value;
             Assert.AreEqual(2000, value, 0);
             chaveDigital.EditMontlyIncome(NIF, 2300);
-            value = creditCheck.GetCreditLimit(NIF);
+            value = (double)((OkObjectResult)creditCheck.GetCreditLimit(NIF).Result).Value;
             Assert.AreEqual(5000, value, 0);
         }
 
@@ -52,13 +54,16 @@ namespace CofidisTest
             string fullName = $"{firstName} {lastName}";
             string NIF = Convert.ToString(Random.Next(100000000, 999999999));
             double salary = Random.Next(0,5000);
-            Person person = chaveDigital.CreatePerson(new Person(NIF, fullName, salary));
-
-            LinkedList<Person> people = chaveDigital.ListPeople();
+            ActionResult<Person> personResult = chaveDigital.CreatePerson(new Person(NIF, fullName, salary));
+            Person person = (Person)((OkObjectResult)personResult.Result).Value;
+            LinkedList<Person> people = (LinkedList<Person>)((OkObjectResult)chaveDigital.ListPeople().Result).Value;
 
             Assert.IsTrue(people.Contains(person));
-
-            Person person_test = chaveDigital.GetPerson(NIF);
+            
+            
+ 
+            
+            Person person_test = (Person)((OkObjectResult)chaveDigital.GetPerson(NIF).Result).Value;
 
             Assert.AreEqual(person, person_test);
 
@@ -66,7 +71,7 @@ namespace CofidisTest
 
             chaveDigital.EditMontlyIncome(NIF, salary);
 
-            person_test = chaveDigital.GetPerson(NIF);
+            person_test = (Person)((OkObjectResult)chaveDigital.GetPerson(NIF).Result).Value;
 
             Assert.AreEqual(salary, person_test.MonthlyIncome);
         }

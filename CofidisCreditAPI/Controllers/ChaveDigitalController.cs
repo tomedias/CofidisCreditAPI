@@ -22,13 +22,8 @@ namespace CofidisCreditAPI.Controllers
         [HttpGet("login")]
         public ActionResult<Person> Login([FromQuery] string NIF)
         {
-            var person = _chaveDigital.GetPerson(NIF);
-            if (person == null)
-            {
-               
-                return NotFound($"Person with NIF {NIF} not found.");
-            }
-            return Ok(person);
+            return _chaveDigital.GetPerson(NIF);
+            
         }
 
         
@@ -41,14 +36,8 @@ namespace CofidisCreditAPI.Controllers
             }
 
             var newPerson = new Person(NIF, name, monthlyIncome);
-            var createdPerson = _chaveDigital.CreatePerson(newPerson);
+            return _chaveDigital.CreatePerson(newPerson);
 
-            if (createdPerson == null)
-            {
-                return StatusCode(500, "An error occurred while creating the person.");
-            }
-
-            return CreatedAtAction(nameof(Login), new { NIF = createdPerson.NIF }, createdPerson);
         }
 
 
@@ -56,28 +45,16 @@ namespace CofidisCreditAPI.Controllers
         public ActionResult<Person> UpdateIncome([FromQuery] string NIF, [FromQuery] double monthlyIncome)
         {
            
-            var updatedPerson = _chaveDigital.EditMontlyIncome(NIF, monthlyIncome);
-            if (updatedPerson == false)
-            {
-               
-                return NotFound($"Person with NIF {NIF} not found.");
-            }
-
-            return Ok(updatedPerson);
+            return _chaveDigital.EditMontlyIncome(NIF, monthlyIncome);
+            
         }
 
         
         [HttpGet("list-people")]
         public ActionResult<LinkedList<Person>> ListPeople()
         {
-            var people = _chaveDigital.ListPeople();
-            if (people.IsNullOrEmpty())
-            {
-                
-                return NoContent();
-            }
-
-            return Ok(people);
+            return _chaveDigital.ListPeople();
+            
         }
     }
 }

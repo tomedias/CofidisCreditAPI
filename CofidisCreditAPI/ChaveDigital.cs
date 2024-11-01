@@ -2,10 +2,14 @@ using System.Data;
 using System;
 using System.Data.SqlClient;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+
 
 namespace CofidisCreditAPI
 {
-    public class ChaveDigital
+    public class ChaveDigital : ControllerBase
     {
 
         private readonly string _connectionString;
@@ -14,7 +18,7 @@ namespace CofidisCreditAPI
             _connectionString = connectionString;
         }
 
-        public Person GetPerson(string NIF)
+        public ActionResult<Person> GetPerson(string NIF)
         {
 
             string query = "SELECT * FROM govpt WHERE NIF = @NIF";
@@ -30,8 +34,8 @@ namespace CofidisCreditAPI
 
                     if (reader.Read())
                     {
-                       
-                        return new Person((string)reader["NIF"], (string)reader["name"], Convert.ToDouble(reader["Monthly_Income"]));
+                        Person person = new Person((string)reader["NIF"], (string)reader["name"], Convert.ToDouble(reader["Monthly_Income"]));
+                        return Ok(person); 
                     }
 
 
@@ -43,12 +47,12 @@ namespace CofidisCreditAPI
                     Console.WriteLine($"An error occurred: {ex.Message}");
                 }
             }
-            return null;
+            return NotFound($"Person with NIF {NIF} not found.");
 
         }
 
 
-        public LinkedList<Person> ListPeople()
+        public ActionResult<LinkedList<Person>> ListPeople()
         {
             string query = "SELECT * FROM govpt";
             LinkedList<Person> people = new LinkedList<Person>();
@@ -76,11 +80,11 @@ namespace CofidisCreditAPI
                     Console.WriteLine($"An error occurred: {ex.Message}");
                 }
             }
-            return people;
+            return people.IsNullOrEmpty() ? NoContent() : Ok(people);
         }
 
 
-        public Person CreatePerson(Person person)
+        public ActionResult<Person> CreatePerson(Person person)
         {
 
             string query = "INSERT INTO govpt (nif, name, monthly_income) VALUES (@NIF, @name,@monthly_income)";
@@ -101,7 +105,7 @@ namespace CofidisCreditAPI
 
                     if (result > 0)
                     {
-                        return person;
+                        return Ok(person);
                     }
 
                 }
@@ -110,12 +114,12 @@ namespace CofidisCreditAPI
                     Console.WriteLine($"An error occurred: {ex.Message}");
                 }
             }
-            return null;
+            return StatusCode(500, "An error occurred while creating the person.");
         }
         
 
 
-        public bool EditMontlyIncome(string NIF, double new_income)
+        public ActionResult<Person> EditMontlyIncome(string NIF, double new_income)
         {
 
 
@@ -136,7 +140,7 @@ namespace CofidisCreditAPI
 
                     if (result > 0)
                     {
-                        return true;
+                        return Ok($"The Income for NIF {NIF} has been updated.");
                     }
 
                 }
@@ -145,7 +149,7 @@ namespace CofidisCreditAPI
                     Console.WriteLine($"An error occurred: {ex.Message}");
                 }
             }
-            return false;
+            return NotFound($"Person with NIF {NIF} not found.");
         }
 
 

@@ -37,11 +37,8 @@ namespace CofidisCreditAPI.Controllers
             }
 
             // Assuming you have a method to fetch person data
-            
-            double creditLimit = _creditCheck.GetCreditLimit(NIF);
 
-            Console.WriteLine($"Found credit of {creditLimit}");
-            return creditLimit!=-1 ?  Ok(creditLimit) : NotFound("Person not found.");
+            return _creditCheck.GetCreditLimit(NIF);
         }
 
 
@@ -72,12 +69,16 @@ namespace CofidisCreditAPI.Controllers
         }
 
         [HttpGet("credit-risk")]
-        public double AccessCreditRisk(String NIF)
+        public ActionResult<double> AccessCreditRisk(String NIF)
         {
             Person person = LoginChaveDigital(NIF);
-            LinkedList<Credit> creditList = _creditCheck.GetCreditList(person);
-            int invalidCount = creditList.Count(credit => !credit.CheckCreditState());
-            double percentageFailedCredit = (double)invalidCount / creditList.Count;
+            ActionResult<LinkedList<Credit>> creditList = _creditCheck.GetCreditList(person);
+            double percentageFailedCredit = 0.0;
+            if (creditList.Result is OkObjectResult okResult)
+            {
+                int invalidCount = creditList.Value.Count(credit => !credit.CheckCreditState());
+                percentageFailedCredit = (double)invalidCount / creditList.Value.Count;
+            }
             double result = percentageFailedCredit + UnemploymentRate + Inflation;
             return Math.Round(result, 2);
         }
@@ -91,13 +92,7 @@ namespace CofidisCreditAPI.Controllers
                 return NotFound("Person not found.");
             }
 
-            var creditList = _creditCheck.GetCreditList(person);
-            if (creditList.IsNullOrEmpty())
-            {
-                return NotFound("No credit records found.");
-            }
-
-            return Ok(creditList);
+            return _creditCheck.GetCreditList(person);
         }
 
         [HttpPost("request-credit")]
@@ -120,21 +115,19 @@ namespace CofidisCreditAPI.Controllers
             }
 
             var creditList = _creditCheck.GetCreditList(person);
-            double totalMissingCredit = creditList.Sum(credit => credit.MissingCredit());
-            double creditLimit = _creditCheck.GetCreditLimit(person.NIF); //EXPECTED NOT TO FAIL OFC
+            double totalMissingCredit = creditList.Value.Sum(credit => credit.MissingCredit());
+            double creditLimit = _creditCheck.GetCreditLimit(person.NIF).Value; //EXPECTED NOT TO FAIL OFC
             if ((totalMissingCredit + creditValue) > creditLimit)
             {
                 return BadRequest($"Credit request exceeds limit. Current limit: {creditLimit}, unpaid credit: {totalMissingCredit}");
             }
-            Credit credit = _creditCheck.CreateCredit(person, creditValue, creditDuration);
-            return credit != null
-                ? Ok($"Your credit has been requested successfully with ID: {credit.Id}")
-                : StatusCode(500, "An error occurred while creating your credit request.");
+            return _creditCheck.CreateCredit(person, creditValue, creditDuration);
+            
         }
 
 
         [HttpPut("pay-credit")]
-        public ActionResult<bool> PayCredit(String NIF, String credit_id, double payment)
+        public ActionResult<string> PayCredit(String NIF, String credit_id, double payment)
         {
             var person = LoginChaveDigital(NIF);
             if (person == null)
@@ -142,8 +135,7 @@ namespace CofidisCreditAPI.Controllers
                 return NotFound("Person not found.");
             }
 
-            double paymentLeft = _creditCheck.PayCredit(person, payment, credit_id);
-            return paymentLeft!=-1 ? Ok($"Payment successfull, {paymentLeft} of payment left.") : StatusCode(500, "Failed to process credit payment.");
+            return _creditCheck.PayCredit(person, payment, credit_id);
         }
     }
         
