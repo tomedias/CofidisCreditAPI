@@ -24,16 +24,23 @@ namespace CofidisTest
         [TestMethod]
         public void TestCreditLimit()
         {
-            double value = creditCheck.GetCreditLimit(-1);
+
+            string firstName = FirstNames[Random.Next(FirstNames.Count)];
+            string lastName = LastNames[Random.Next(LastNames.Count)];
+            string fullName = $"{firstName} {lastName}";
+            string NIF = Convert.ToString(Random.Next(100000000, 999999999));
+            double salary = -1;
+            Person person = chaveDigital.CreatePerson(new Person(NIF, fullName, salary));
+            double value = creditCheck.GetCreditLimit(NIF);
             Assert.AreEqual(0.0, value, 0);
-
-            value = creditCheck.GetCreditLimit(800);
+            chaveDigital.EditMontlyIncome(NIF, 800);
+            value = creditCheck.GetCreditLimit(NIF);
             Assert.AreEqual(1000, value, 0);
-
-            value = creditCheck.GetCreditLimit(1700);
+            chaveDigital.EditMontlyIncome(NIF, 1700);
+            value = creditCheck.GetCreditLimit(NIF);
             Assert.AreEqual(2000, value, 0);
-
-            value = creditCheck.GetCreditLimit(2300);
+            chaveDigital.EditMontlyIncome(NIF, 2300);
+            value = creditCheck.GetCreditLimit(NIF);
             Assert.AreEqual(5000, value, 0);
         }
 
@@ -61,7 +68,7 @@ namespace CofidisTest
 
             person_test = chaveDigital.GetPerson(NIF);
 
-            Assert.AreEqual(salary, person_test.Monthly_Income);
+            Assert.AreEqual(salary, person_test.MonthlyIncome);
         }
     }
 }
